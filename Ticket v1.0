@@ -1,0 +1,244 @@
+# es ist nicht das besste aber es macht das was es soll
+# IDs müssen eingtragen werden so wie einige emoji's
+# Log channel hat es in einen .txt file format
+
+# Ein kleinen Bug gibt es wenn man in Ticket kein mod ist und dann auf die Button drückt und sich dann mod gibt werden alle Button deaktiviert
+
+# Wenn ihr verbesserungs ideen habt würde es mich freuen wenn ihr sie mir mitteil  Discord: https://discord.gg/32QNS3ZFZb
+
+
+import discord
+from discord.ext import commands
+from discord.commands import slash_command
+import random
+import os
+import asyncio
+
+class Tickettest(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.bot.add_view(TutorialView(self.bot))
+        self.bot.add_view(main(self.bot))
+
+    @slash_command(description="Ticket System")
+    @commands.has_permissions(administrator=True)
+    async def ticketsystem(self, ctx):
+
+        ticket_create = discord.Embed(
+            title="Support kontaktieren",
+            description="Drücke den Button, um ein neues Ticket zu erstellen.\n"
+                        "\n"
+                        "⚠️**Wichtig** Bitte erstelle nur ein Ticket wenn du ein ernstes problem hast[!](https://my-cool-app.com)"
+                        f"\nAnsonsten stell deine frage in <#CHANNELID>", # ------CHANNELID------
+            color=0x3BA45C
+        )
+        ticket_create.set_thumbnail(
+            url="https://cdn.discordapp.com/attachments/1070453579992797206/1071140101675036722/ticket.gif")
+        ticket_create.set_image(
+            url="https://cdn.discordapp.com/attachments/1070453579992797206/1071143877517521047/Comp_1.gif")
+        erfolgreich = discord.Embed(
+            title="Ticket System erfolgreich aufgesetzt!",
+            color=0x2ECC70
+        )
+        erfolgreich.set_image(url="https://cdn.discordapp.com/attachments/1070453579992797206/1071143877517521047/Comp_1.gif")
+
+
+        await ctx.respond(embed=erfolgreich, ephemeral=True)
+        await ctx.channel.send(embed=ticket_create, view=TutorialView(self.bot))
+
+def setup(bot):
+    bot.add_cog(Tickettest(bot))
+
+class Logger:
+    def __init__(
+        self,
+        channel: discord.TextChannel
+    ):
+        self.channel = channel
+
+    async def create_log_file(
+        self
+    ):
+        with open(f"Log {self.channel.name}.txt", "w", encoding="utf-8") as f:
+            f.write(f'Ticket " {self.channel.name}"\n\n')
+            f.write("-----------------------------------------\n")
+            messages = await self.channel.history(limit=69420).flatten()
+            for i in reversed(messages):
+
+                f.write(f"{i.created_at}: {i.author}: {i.author.id}: {i.content}\n")
+            f.write("-----------------------------------------\n\n")
+            if len(messages) >= 69420:
+                f.write(
+                    f"Es wurden mehr als 69420 Nachrichten in diesen Channel eingesendet. Aus Speicher-Gründen wurden "
+                    f"nur die letzten 69420 Nachrichten geloggt.")
+            else:
+                f.write(f"Anzahl an Nachrichten: {len(messages)}")
+
+    async def send_log_file(
+        self,
+        channel: discord.TextChannel
+    ):
+        await channel.send(
+            files=[discord.File(f"Log {self.channel.name}.txt", filename=f"{self.channel.name}.txt")]
+        )
+        os.remove(
+            f"Log {self.channel.name}.txt"
+        )
+
+
+class TutorialView(discord.ui.View):
+    def __init__(self, bot):
+        self.bot = bot
+        super().__init__(timeout=None)
+        self.cooldown = commands.CooldownMapping.from_cooldown(1, 120, commands.BucketType.user)
+
+    @discord.ui.button(label="Ticket erstellen", style=discord.ButtonStyle.green, emoji="📩", custom_id="ticket", row=1)
+    async def button_callback1(self, button, interaction):
+        cat = self.bot.get_channel(CATEGORYID)  # änder hier deine CATEGORY ID
+        interaction.message.author = interaction.user
+        bucket = self.cooldown.get_bucket(interaction.message)
+        retry = bucket.update_rate_limit()
+
+
+
+        if retry:
+            liste = [f"Immer sachte mit den jungen Pferden! Warte mal noch  **{round(retry)}** sekunden",
+                     f"Oh! Da musst du wohl noch **{round(retry)}** sekunden warten",
+                     f"Immer eins nach den anderen. **{round(retry)}** sekunden musst du noch warten"]
+            word = random.choice(liste)
+            timeup = discord.Embed(
+                title="Cooldown",
+                description=f"{word}",
+                color=0x9D1B21
+            )
+            return await interaction.response.send_message(embed=timeup, ephemeral=True)
+
+        try:
+            overwrites = {
+                interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                interaction.guild.get_role(MODROLLE): discord.PermissionOverwrite(read_messages=True, send_messages=True),   # ------MODROLLE------
+                interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+            }
+
+            number = (random.randint(10, 999))
+            ticket_channel = await interaction.guild.create_text_channel(
+                f'🎫・{interaction.user}-{interaction.user.id}{number}',
+                topic=f'Ticket von {interaction.user.name}'
+                      f'\n\ninfo'
+                      f'\nTicket-nummer: {number}'
+                      f'\nkunden-ID: {interaction.user.id}',
+                category=cat,
+                overwrites=overwrites
+            )
+
+            ticket_create = discord.Embed(
+                title="Ticket Erstellt!",
+                description=f"{interaction.user.mention}, Hier findest du dein ticket:\n{ticket_channel.mention}",
+                color=0x3BA45C
+            )
+            await interaction.response.send_message(embed=ticket_create, ephemeral=True)
+
+            ticket_channel_em = discord.Embed(
+                title=f"Willkommen zu deinen Ticket {interaction.user.name}",
+                description="**Um zu beginnen, bitte befolge diese Schritte**"
+                            "\nNenne uns dein Anliegen und habe ein bisschen Geduld."
+                            f"\nIn der Zwischenzeit kannst du auch die Regeln durchlesen."
+                            f"\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+                            f"\nUnsere <@&MODROLLE> werden sich so schnell wie möglich um dein anliegen drum kümmern ", # ------MODROLLE------
+                color=0x3BA45C
+            )
+            ticket_channel_em.set_thumbnail(url="https://cdn.discordapp.com/attachments/1070453579992797206/1071140101675036722/ticket.gif")
+            ticket_channel_em.set_image(url="https://cdn.discordapp.com/attachments/1070453579992797206/1071143877517521047/Comp_1.gif")
+
+            await ticket_channel.send(embed=ticket_channel_em, view=main(self.bot))
+
+
+        except:
+            error = discord.Embed(
+                title="Etwas stimmt was nicht",
+                description="Da hat was nicht so richtig funktioniert\nVersuche es später noch einmal."
+                            "\n\nFalls diese problem weiter hin bestehen sollte, kontaktiere bitte den <@&MODROLLE>",
+                color=discord.Color.embed_background()
+            )
+            error.set_thumbnail(url="https://cdn.discordapp.com/attachments/1061754626489200690/1061755275402543254/749046696482439188.gif")
+            await interaction.response.send_message(embed=error, ephemeral=True)
+
+
+class main(discord.ui.View):
+    def __init__(self, bot) -> None:
+        self.bot = bot
+        super().__init__(timeout=None)
+
+
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.red, emoji="🔒", custom_id="close", row=1)
+    async def button_callback2(self, channel, interaction):
+        for child in self.children:
+            child.disabled = True
+
+        modrole = interaction.guild.get_role(MODROLLE)
+
+        if modrole in interaction.user.roles:
+            close = discord.Embed(
+                title="Ticket wurde geschlossen",
+                description=f"{interaction.user.mention} hat dein Ticket geschlossen. Dieser Channel wird num in wenigen Sekunden gelöscht",
+                color=0xBF3537
+            )
+            await interaction.response.edit_message(view=self)
+            await interaction.followup.send(embed=close)
+            logchannel = interaction.guild.get_channel(LOGCHANNELID)
+            logger = Logger(interaction.channel)
+            await logger.create_log_file()
+            await logchannel.send(f"Closed by {interaction.user.mention}")
+            await logger.send_log_file(logchannel)
+            await asyncio.sleep(10)
+            await interaction.channel.delete()
+        else:
+            liste = [f"Nur {modrole.mention} können dieses Ticket schlissen",
+                     f"Da hast du wohl eine sonder Funktion von den {modrole.mention} entdeckt",
+                     f"Wenn die Zeit dazu gekommen ist, werden die {modrole.mention} sich schon drum kümmern"]
+            wort = random.choice(liste)
+            teamrolle = discord.Embed(
+                description=f"{wort}",
+                color=0x6E3457
+            )
+            await interaction.response.send_message(embed=teamrolle, ephemeral=True)
+
+    @discord.ui.button(label="Annehmen", style=discord.ButtonStyle.green, emoji="✅", custom_id="Bearbeiten", row=1)
+    async def button_callback3(self, button, interaction):
+        button.disabled = True
+        modrole = interaction.guild.get_role(MODROLLE)
+
+        if modrole in interaction.user.roles:
+
+            Bearbeiten = discord.Embed(
+                title="Ticket angenommen",
+                description=f"{interaction.user.mention} kümmert sich um dein Ticket",
+                color=0x3BA45C
+            )
+
+            await interaction.response.edit_message(view=self)
+            await interaction.followup.send(embed=Bearbeiten)
+        else:
+            liste = [f"Nur {modrole.mention} können dieses Ticket schlissen",
+                     f"Da hast du wohl eine sonder funktion von den {modrole.mention} entdeckt"]
+            wort = random.choice(liste)
+            teamrolle = discord.Embed(
+                description=f"{wort}",
+                color=0x6E3457
+            )
+            await interaction.response.send_message(embed=teamrolle, ephemeral=True)
+
+    @discord.ui.button(label="Regel", style=discord.ButtonStyle.blurple, emoji="🔖", custom_id="Regel", row=1)
+    async def button_callback4(self, button, interaction):
+        infos = discord.Embed(
+            title="Ticket Regel!",
+            description=f"\n1・Alle Nachrichten in diesem Ticket werden aufgezeichnet und können für spätere Zwecke wieder abgerufen werden."
+                        f"\n2・Nur das Server-Team darf diese Chats einsehen"
+                        f"\n3・Das Team darf keinerlei Details weitergeben. Sollte es doch geschehen, kann dies mit einem Serverausschluss bestraft werden.",
+            color=0x5865F2
+        )
+        infos.set_thumbnail(url="https://cdn.discordapp.com/attachments/1070453579992797206/1071576887773646939/book.png")
+        await interaction.response.send_message(embed=infos, ephemeral=True)
